@@ -8,12 +8,13 @@ import horovod.tensorflow as hvd
 Polyak averaging op
 '''
 
+
 class Optimizer(object):
     def __init__(self):
         super(Optimizer, self).__init__()
 
     def polyak(self, params, beta):
-        #params = tf.trainable_variables()
+        # params = tf.trainable_variables()
         ema = tf.train.ExponentialMovingAverage(decay=beta, zero_debias=True)
         avg_op = tf.group(ema.apply(params))
         # Swapping op
@@ -29,7 +30,6 @@ class Optimizer(object):
                     updates += [update1, update2]
         swap_op = tf.group(*updates)
         return avg_op, swap_op, ema
-
 
     def adam(self, params, cost_or_grads, alpha=3e-4, hps=None, epsilon=1e-8):
         updates = []
@@ -51,7 +51,8 @@ class Optimizer(object):
         for w, g in zip(params, grads):
             mom2 = tf.Variable(tf.zeros(w.get_shape()), w.name + '_adam_m2')
             if hps.beta1 > 0:
-                mom1 = tf.Variable(tf.zeros(w.get_shape()), w.name + '_adam_m1')
+                mom1 = tf.Variable(tf.zeros(w.get_shape()),
+                                   w.name + '_adam_m1')
                 mom1_new = hps.beta1 * mom1 + (1. - hps.beta1) * g
                 updates.append(mom1.assign(mom1_new))
             else:
@@ -67,13 +68,11 @@ class Optimizer(object):
         train_op = tf.group(polyak_avg_op, *updates)
         return train_op, polyak_swap_op, ema
 
-
     '''
     Adam optimizer
     Version whose learning rate could, in theory, be scaled linearly (like SGD+momentum).
     (It doesn't seem to work yet, though.)
     '''
-
 
     def adam2(self, params, cost_or_grads, alpha=3e-4, hps=None, epsilon=1e-8):
         updates = []
@@ -96,7 +95,8 @@ class Optimizer(object):
         for w, g1, g2 in zip(params, grads1, grads2):
             mom2 = tf.Variable(tf.zeros(w.get_shape()), w.name + '_adam_m2')
             if hps.beta1 > 0:
-                mom1 = tf.Variable(tf.zeros(w.get_shape()), w.name + '_adam_m1')
+                mom1 = tf.Variable(tf.zeros(w.get_shape()),
+                                   w.name + '_adam_m1')
                 mom1_new = hps.beta1 * mom1 + (1. - hps.beta1) * g1
                 updates.append(mom1.assign(mom1_new))
             else:
@@ -112,13 +112,11 @@ class Optimizer(object):
         train_op = tf.group(polyak_avg_op, *updates)
         return train_op, polyak_swap_op, ema
 
-
     '''
     Adam optimizer
     Version whose learning rate could, in theory, be scaled linearly (like SGD+momentum).
     It doesn't seem to work though.
     '''
-
 
     def adam2_old(self, params, cost_or_grads, lr=3e-4, mom1=0.9, mom2=0.999, epsilon=1e-8):
         updates = []
@@ -151,7 +149,6 @@ class Optimizer(object):
             updates.append(p.assign(p_t))
         return tf.group(*updates)
 
-
     def adamax(self, params, cost_or_grads, alpha=3e-4, hps=None, epsilon=1e-8):
         updates = []
         if type(cost_or_grads) is not list:
@@ -172,50 +169,14 @@ class Optimizer(object):
         for w, g in zip(params, grads):
             mom2 = tf.Variable(tf.zeros(w.get_shape()), w.name + '_adam_m2')
             if hps.beta1 > 0:
-                mom1 = tf.Variable(tf.zeros(w.get_shape()), w.name + '_adam_m1')
+                mom1 = tf.Variable(tf.zeros(w.get_shape()),
+                                   w.name + '_adam_m1')
                 mom1_new = hps.beta1 * mom1 + (1. - hps.beta1) * g
                 updates.append(mom1.assign(mom1_new))
             else:
                 mom1_new = g
             m2_new = tf.maximum(beta2 * mom2, abs(g))
             delta_t = mom1_new / (m2_new + epsilon)
-            w_new = hps.weight_decay * w - alpha_t * delta_t
-            updates.append(mom2.assign(m2_new))
-            updates.append(w.assign(w_new))
-
-        # Polyak averaging
-        polyak_avg_op, polyak_swap_op, ema = self.polyak(params, beta2)
-        train_op = tf.group(polyak_avg_op, *updates)
-        return train_op, polyak_swap_op, ema
-
-
-    def adam(self, params, cost_or_grads, alpha=3e-4, hps=None, epsilon=1e-8):
-        updates = []
-        if type(cost_or_grads) is not list:
-            gs = tf.gradients(cost_or_grads, params)
-        else:
-            gs = cost_or_grads
-
-        beta2 = 1-1./(hps.train_its*hps.polyak_epochs)
-
-        # all-reduce
-        grads = [Z.allreduce_mean(g) for g in gs]
-
-        t = tf.Variable(1., 'adam_t')
-        alpha_t = alpha * tf.sqrt((1. - tf.pow(beta2, t))) / \
-            (1. - tf.pow(hps.beta1, t))
-        updates.append(t.assign_add(1))
-
-        for w, g in zip(params, grads):
-            mom2 = tf.Variable(tf.zeros(w.get_shape()), w.name + '_adam_m2')
-            if hps.beta1 > 0:
-                mom1 = tf.Variable(tf.zeros(w.get_shape()), w.name + '_adam_m1')
-                mom1_new = hps.beta1 * mom1 + (1. - hps.beta1) * g
-                updates.append(mom1.assign(mom1_new))
-            else:
-                mom1_new = g
-            m2_new = beta2 * mom2 + (1. - beta2) * tf.square(g)
-            delta_t = mom1_new / (tf.sqrt(m2_new) + epsilon)
             w_new = hps.weight_decay * w - alpha_t * delta_t
             updates.append(mom2.assign(m2_new))
             updates.append(w.assign(w_new))

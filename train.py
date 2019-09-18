@@ -71,18 +71,24 @@ def init_visualizations(hps, logdir, model):
 # ===
 # Code for getting data
 # ===
+
+
 def get_data(hps, sess):
     if hps.image_size == -1:
         hps.image_size = {'edges2shoes': 32, 'mnist': 32, 'cifar10': 32, 'imagenet-oord': 64,
                           'imagenet': 256, 'celeba': 256, 'lsun_realnvp': 64, 'lsun': 256}[hps.problem]
     if hps.n_test == -1:
-        hps.n_test = {'edges2shoes': 200, 'mnist': 10000, 'cifar10': 10000, 'imagenet-oord': 50000, 'imagenet': 50000,
+        hps.n_test = {'edges2shoes': 200, 'mnist': 10000, 'cifar10': 10000,
+                      'imagenet-oord': 50000, 'imagenet': 50000,
                       'celeba': 3000, 'lsun_realnvp': 300*hvd.size(), 'lsun': 300*hvd.size()}[hps.problem]
     hps.n_y = {'edges2shoes': 10, 'mnist': 10, 'cifar10': 10, 'imagenet-oord': 1000,
                'imagenet': 1000, 'celeba': 1, 'lsun_realnvp': 1, 'lsun': 1}[hps.problem]
     if hps.data_dir == "":
-        hps.data_dir = {'edges2shoes': None, 'mnist': None, 'cifar10': None, 'imagenet-oord': '/mnt/host/imagenet-oord-tfr', 'imagenet': '/mnt/host/imagenet-tfr',
-                        'celeba': '/mnt/host/celeba-reshard-tfr', 'lsun_realnvp': '/mnt/host/lsun_realnvp', 'lsun': '/mnt/host/lsun'}[hps.problem]
+        hps.data_dir = {'edges2shoes': 'edges2shoes', 'mnist': None, 'cifar10': None,
+                        'imagenet-oord': '/mnt/host/imagenet-oord-tfr',
+                        'imagenet': '/mnt/host/imagenet-tfr',
+                        'celeba': '/mnt/host/celeba-reshard-tfr',
+                        'lsun_realnvp': '/mnt/host/lsun_realnvp', 'lsun': '/mnt/host/lsun'}[hps.problem]
 
     if hps.problem == 'lsun_realnvp':
         hps.rnd_crop = True
@@ -151,7 +157,8 @@ def main(hps):
     np.random.seed(hvd.rank() + hvd.size() * hps.seed)
 
     # Get data and set train_its and valid_its
-    train_iterator_A, test_iterator_A, data_init_A, train_iterator_B, test_iterator_B, data_init_B = get_data(hps, sess)
+    train_iterator_A, test_iterator_A, data_init_A, train_iterator_B, test_iterator_B, data_init_B = get_data(
+        hps, sess)
     hps.train_its, hps.test_its, hps.full_test_its = get_its(hps)
 
     # Create log dir
@@ -162,9 +169,11 @@ def main(hps):
     # Set up restore path
     if hps.inference:
         if hps.restore_path_A == '':
-            hps.restore_path_A = os.path.join(hps.logdir, 'model_A_best_loss.ckpt')
+            hps.restore_path_A = os.path.join(
+                hps.logdir, 'model_A_best_loss.ckpt')
         if hps.restore_path_B == '':
-            hps.restore_path_B = os.path.join(hps.logdir, 'model_B_best_loss.ckpt')
+            hps.restore_path_B = os.path.join(
+                hps.logdir, 'model_B_best_loss.ckpt')
 
     # Create model
     import model
@@ -213,7 +222,8 @@ def train(sess, model, hps, logdir, visualise):
             # Run a training step synchronously.
             _t = time.time()
             x_A, y_A, x_B, y_B = model.get_train_data()
-            train_results_A, train_results_B = model.train(lr, x_A, y_A, x_B, y_B)
+            train_results_A, train_results_B = model.train(
+                lr, x_A, y_A, x_B, y_B)
             train_results['A'] += [train_results_A]
             train_results['B'] += [train_results_B]
             if hps.verbose and hvd.rank() == 0:
@@ -252,8 +262,10 @@ def train(sess, model, hps, logdir, visualise):
                     x_A, y_A, x_B, y_B = model.get_test_data()
                     test_results['A'] += [model.test_A(x_A, y_A, x_B, y_B)]
                     test_results['B'] += [model.test_B(x_A, y_A, x_B, y_B)]
-                test_results['A'] = np.mean(np.asarray(test_results['A']), axis=0)
-                test_results['B'] = np.mean(np.asarray(test_results['B']), axis=0)
+                test_results['A'] = np.mean(
+                    np.asarray(test_results['A']), axis=0)
+                test_results['B'] = np.mean(
+                    np.asarray(test_results['B']), axis=0)
 
                 if hvd.rank() == 0:
                     test_logger['A'].log(epoch=epoch, n_processed=n_processed,
@@ -291,6 +303,7 @@ def train(sess, model, hps, logdir, visualise):
 
     if hvd.rank() == 0:
         _print("Finished!")
+
 
 def infer(sess, model, hps, iterators, its):
     from tqdm import tqdm
@@ -330,6 +343,8 @@ def infer(sess, model, hps, iterators, its):
     return x_A, z_A, x_B, z_B
 
 # Get number of training and validation iterations
+
+
 def get_its(hps):
     # These run for a fixed amount of time. As anchored batch is smaller, we've actually seen fewer examples
     train_its = int(np.ceil(hps.n_train / (hps.n_batch_train * hvd.size())))
@@ -350,6 +365,8 @@ def get_its(hps):
 '''
 Create tensorflow session with horovod
 '''
+
+
 def tensorflow_session():
     # Init session and params
     config = tf.ConfigProto()

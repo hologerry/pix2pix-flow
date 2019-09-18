@@ -1,10 +1,13 @@
-from toposort import toposort
 import contextlib
+import sys
+import time
+
 import numpy as np
 import tensorflow as tf
 import tensorflow.contrib.graph_editor as ge
-import time
-import sys
+from tensorflow.python.ops import gradients as tf_gradients_lib
+from toposort import toposort
+
 sys.setrecursionlimit(10000)
 # refers back to current module if we decide to split helpers out
 util = sys.modules[__name__]
@@ -14,7 +17,6 @@ setattr(tf.GraphKeys, "VARIABLES", "variables")
 
 # save original gradients since tf.gradient could be monkey-patched to point
 # to our version
-from tensorflow.python.ops import gradients as tf_gradients_lib
 tf_gradients = tf_gradients_lib.gradients
 
 MIN_CHECKPOINT_NODE_SIZE = 1024    # use lower value during testing
@@ -49,12 +51,16 @@ def gradients(ys, xs, grad_ys=None, checkpoints='collection', **kwargs):
           that we should re-use when calculating the gradients in the backward pass
           all other tensors that do not appear in this list will be re-computed
         - a string specifying how this list should be determined. currently we support
-            - 'speed':  checkpoint all outputs of convolutions and matmuls. these ops are usually the most expensive,
+            - 'speed':  checkpoint all outputs of convolutions and matmuls.
+                        these ops are usually the most expensive,
                         so checkpointing them maximizes the running speed
-                        (this is a good option if nonlinearities, concats, batchnorms, etc are taking up a lot of memory)
+                        (this is a good option if nonlinearities, concats, batchnorms,
+                         etc are taking up a lot of memory)
             - 'memory': try to minimize the memory usage
-                        (currently using a very simple strategy that identifies a number of bottleneck tensors in the graph to checkpoint)
-            - 'collection': look for a tensorflow collection named 'checkpoints', which holds the tensors to checkpoint
+                        (currently using a very simple strategy that identifies
+                         a number of bottleneck tensors in the graph to checkpoint)
+            - 'collection': look for a tensorflow collection named 'checkpoints',
+                            which holds the tensors to checkpoint
     '''
 
     #    print("Calling memsaving gradients with", checkpoints)
@@ -79,10 +85,10 @@ def gradients(ys, xs, grad_ys=None, checkpoints='collection', **kwargs):
 
     # don't recompute xs, remove variables
     xs_ops = _to_ops(xs)
-    fwd_ops = [op for op in fwd_ops if not op in xs_ops]
-    fwd_ops = [op for op in fwd_ops if not '/assign' in op.name]
-    fwd_ops = [op for op in fwd_ops if not '/Assign' in op.name]
-    fwd_ops = [op for op in fwd_ops if not '/read' in op.name]
+    fwd_ops = [op for op in fwd_ops if op not in xs_ops]
+    fwd_ops = [op for op in fwd_ops if '/assign' not in op.name]
+    fwd_ops = [op for op in fwd_ops if '/Assign' not in op.name]
+    fwd_ops = [op for op in fwd_ops if '/read' not in op.name]
     ts_all = ge.filter_ts(fwd_ops, True)  # get the tensors
     ts_all = [t for t in ts_all if '/read' not in t.name]
     ts_all = set(ts_all) - set(xs) - set(ys)
@@ -104,7 +110,7 @@ def gradients(ys, xs, grad_ys=None, checkpoints='collection', **kwargs):
             def fixdims(t):  # tf.Dimension values are not compatible with int, convert manually
                 try:
                     return [int(e if e.value is not None else 64) for e in t]
-                except:
+                except Exception:
                     return [0]  # unknown shape
             ts_all = [t for t in ts_all if np.prod(
                 fixdims(t.shape)) > MIN_CHECKPOINT_NODE_SIZE]
@@ -150,8 +156,8 @@ def gradients(ys, xs, grad_ys=None, checkpoints='collection', **kwargs):
                     break
 
             if not bottleneck_ts:
-                raise Exception(
-                    'unable to find bottleneck tensors! please provide checkpoint nodes manually, or use checkpoints="speed".')
+                raise Exception('unable to find bottleneck tensors! '
+                                'please provide checkpoint nodes manually,or use checkpoints="speed".')
 
             # sort the bottlenecks
             bottlenecks_sorted_lists = tf_toposort(
@@ -168,8 +174,7 @@ def gradients(ys, xs, grad_ys=None, checkpoints='collection', **kwargs):
                 checkpoints = sorted_bottlenecks[step::step]
 
         else:
-            raise Exception(
-                '%s is unsupported input for "checkpoints"' % (checkpoints,))
+            raise Exception('%s is unsupported input for "checkpoints"' % (checkpoints,))
 
     checkpoints = list(set(checkpoints).intersection(ts_all))
 
@@ -393,7 +398,7 @@ def format_ops(ops, sort_outputs=True):
     rest to str(op)."""
 
     if hasattr(ops, '__iter__') and not isinstance(ops, str):
-        l = [(op.name if hasattr(op, "name") else str(op)) for op in ops]
+        l = [(op.name if hasattr(op, "name") else str(op)) for op in ops]  # noqa
         if sort_outputs:
             return sorted(l)
         return l

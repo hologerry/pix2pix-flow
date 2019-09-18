@@ -1,7 +1,7 @@
+import threading
+
 import numpy as np
 from PIL import Image
-import time
-import threading
 
 
 def save_image(x, path):
@@ -9,8 +9,9 @@ def save_image(x, path):
     im.save(path, optimize=True)
     return
 
-# Assumes [NCHW] format
+
 def save_raster(x, path, rescale=False, width=None):
+    # Assumes [NCHW] format
     t = threading.Thread(target=_save_raster, args=(x, path, rescale, width))
     t.start()
 
@@ -19,11 +20,12 @@ def _save_raster(x, path, rescale, width):
     x = to_raster(x, rescale, width)
     save_image(x, path)
 
-# Shape: (n_patches,rows,columns,channels)
+
 def to_raster_old(x, rescale=False, width=None):
+    # Shape: (n_patches, rows, columns, channels)
     x = np.transpose(x, (0, 3, 1, 2))
 
-    #x = x.swapaxes(2, 3)
+    # x = x.swapaxes(2, 3)
     if len(x.shape) == 3:
         x = x.reshape((x.shape[0], 1, x.shape[1], x.shape[2]))
     if x.shape[1] == 1:
@@ -48,8 +50,8 @@ def to_raster_old(x, rescale=False, width=None):
     return result
 
 
-# Shape: (n_patches,rows,columns,channels)
 def to_raster(x, rescale=False, width=None):
+    # Shape: (n_patches,rows,columns,channels)
     if len(x.shape) == 3:
         x = x.reshape((x.shape[0], x.shape[1], x.shape[2], 1))
     if x.shape[3] == 1:

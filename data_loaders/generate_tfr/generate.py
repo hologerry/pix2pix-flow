@@ -15,8 +15,10 @@
 
 """
 Generate CelebA-HQ and Imagenet datasets
-For CelebA-HQ, first create original tfrecords file using https://github.com/tkarras/progressive_growing_of_gans/blob/master/dataset_tool.py
-For Imagenet, first create original tfrecords file using https://github.com/tensorflow/models/blob/master/research/inception/inception/data/build_imagenet_data.py
+For CelebA-HQ, first create original tfrecords file using
+https://github.com/tkarras/progressive_growing_of_gans/blob/master/dataset_tool.py
+For Imagenet, first create original tfrecords file using
+https://github.com/tensorflow/models/blob/master/research/inception/inception/data/build_imagenet_data.py
 Then, use this script to get our tfr file from those records.
 """
 
@@ -195,7 +197,7 @@ def dump_celebahq(data_dir, tfrecord_dir, max_res, split, write):
                     assert tfr.cur_images == total_imgs, (
                         tfr.cur_images, total_imgs)
 
-        #attr, *imgs = sess.run([_attr, *_imgs])
+        # attr, *imgs = sess.run([_attr, *_imgs])
 
 
 def dump_imagenet(data_dir, tfrecord_dir, max_res, split, write):
@@ -247,11 +249,12 @@ def dump_imagenet(data_dir, tfrecord_dir, max_res, split, write):
                     tfr.add_image(label, imgs, [])
             assert tfr.cur_images == total_imgs, (tfr.cur_images, total_imgs)
 
-        #label, *imgs = sess.run([_label, *_imgs])
+        # label, *imgs = sess.run([_label, *_imgs])
 
 
 class TFRecordExporter:
-    def __init__(self, tfrecord_dir, resolution_log2, expected_images, shards, print_progress=True, progress_interval=10):
+    def __init__(self, tfrecord_dir, resolution_log2, expected_images,
+                 shards, print_progress=True, progress_interval=10):
         self.tfrecord_dir = tfrecord_dir
         self.tfr_prefix = os.path.join(
             self.tfrecord_dir, os.path.basename(self.tfrecord_dir))
@@ -281,7 +284,7 @@ class TFRecordExporter:
                     '-r%02d-s-%04d-of-%04d.tfrecords' % (
                         self.resolution_log2 - lod, shard, shards)
                 writers.append(tf.python_io.TFRecordWriter(tfr_file, tfr_opt))
-            #print(np.unique(img_to_shard, return_counts=True))
+            # print(np.unique(img_to_shard, return_counts=True))
             counts = np.unique(img_to_shard, return_counts=True)[1]
             assert len(counts) == shards
             print("Smallest and largest shards have size",
@@ -345,8 +348,8 @@ if __name__ == "__main__":
     parser.add_argument("--write", action='store_true',
                         help="Whether to write")
     hps = parser.parse_args()  # So error if typo
-    #dump_imagenet(hps.data_dir, hps.tfrecord_dir, hps.max_res, 'validation', hps.write)
-    #dump_imagenet(hps.data_dir, hps.tfrecord_dir, hps.max_res, 'train', hps.write)
+    # dump_imagenet(hps.data_dir, hps.tfrecord_dir, hps.max_res, 'validation', hps.write)
+    # dump_imagenet(hps.data_dir, hps.tfrecord_dir, hps.max_res, 'train', hps.write)
     dump_celebahq(hps.data_dir, hps.tfrecord_dir,
                   hps.max_res, 'validation', hps.write)
     dump_celebahq(hps.data_dir, hps.tfrecord_dir,

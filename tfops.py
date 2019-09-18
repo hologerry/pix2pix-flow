@@ -1,8 +1,8 @@
+import horovod.tensorflow as hvd
+import numpy as np
 import tensorflow as tf
 from tensorflow.contrib.framework.python.ops import add_arg_scope, arg_scope
-from tensorflow.contrib.layers import variance_scaling_initializer
-import numpy as np
-import horovod.tensorflow as hvd
+# from tensorflow.contrib.layers import variance_scaling_initializer
 
 # Debugging function
 do_print_act_stats = True
@@ -68,21 +68,22 @@ def get_variable_ddi(name, shape, initial_value, dtype=tf.float32, init=False, t
 
 
 @add_arg_scope
-def actnorm(name, x, scale=1., logdet=None, logscale_factor=3., batch_variance=False, reverse=False, init=False, trainable=True):
+def actnorm(name, x, scale=1., logdet=None, logscale_factor=3.,
+            batch_variance=False, reverse=False, init=False, trainable=True):
     if arg_scope([get_variable_ddi], trainable=trainable):
         if not reverse:
             x = actnorm_center(name+"_center", x, reverse)
             x = actnorm_scale(name+"_scale", x, scale, logdet,
                               logscale_factor, batch_variance, reverse, init)
-            if logdet != None:
+            if logdet is not None:
                 x, logdet = x
         else:
             x = actnorm_scale(name + "_scale", x, scale, logdet,
                               logscale_factor, batch_variance, reverse, init)
-            if logdet != None:
+            if logdet is not None:
                 x, logdet = x
             x = actnorm_center(name+"_center", x, reverse)
-        if logdet != None:
+        if logdet is not None:
             return x, logdet
         return x
 
@@ -114,7 +115,8 @@ def actnorm_center(name, x, reverse=False):
 
 
 @add_arg_scope
-def actnorm_scale(name, x, scale=1., logdet=None, logscale_factor=3., batch_variance=False, reverse=False, init=False, trainable=True):
+def actnorm_scale(name, x, scale=1., logdet=None, logscale_factor=3.,
+                  batch_variance=False, reverse=False, init=False, trainable=True):
     shape = x.get_shape()
     with tf.variable_scope(name), arg_scope([get_variable_ddi], trainable=trainable):
         assert len(shape) == 2 or len(shape) == 4
@@ -154,7 +156,7 @@ def actnorm_scale(name, x, scale=1., logdet=None, logscale_factor=3., batch_vari
             else:
                 x /= s
 
-        if logdet != None:
+        if logdet is not None:
             dlogdet = tf.reduce_sum(logs) * logdet_factor
             if reverse:
                 dlogdet *= -1
@@ -233,7 +235,9 @@ def add_edge_padding(x, filter_size):
 
 
 @add_arg_scope
-def conv2d(name, x, width, filter_size=[3, 3], stride=[1, 1], pad="SAME", do_weightnorm=False, do_actnorm=True, context1d=None, skip=1, edge_bias=True):
+def conv2d(name, x, width, filter_size=[3, 3], stride=[1, 1],
+           pad="SAME", do_weightnorm=False, do_actnorm=True,
+           context1d=None, skip=1, edge_bias=True):
     with tf.variable_scope(name):
         if edge_bias and pad == "SAME":
             x = add_edge_padding(x, filter_size)
@@ -258,7 +262,7 @@ def conv2d(name, x, width, filter_size=[3, 3], stride=[1, 1], pad="SAME", do_wei
             x += tf.get_variable("b", [1, 1, 1, width],
                                  initializer=tf.zeros_initializer())
 
-        if context1d != None:
+        if context1d is not None:
             x += tf.reshape(linear("context", context1d,
                                    width), [-1, 1, 1, width])
     return x
@@ -290,7 +294,8 @@ def separable_conv2d(name, x, width, filter_size=[3, 3], stride=[1, 1], padding=
 
 
 @add_arg_scope
-def conv2d_zeros(name, x, width, filter_size=[3, 3], stride=[1, 1], pad="SAME", logscale_factor=3, skip=1, edge_bias=True):
+def conv2d_zeros(name, x, width, filter_size=[3, 3], stride=[1, 1],
+                 pad="SAME", logscale_factor=3, skip=1, edge_bias=True):
     with tf.variable_scope(name):
         if edge_bias and pad == "SAME":
             x = add_edge_padding(x, filter_size)
@@ -383,7 +388,7 @@ def shuffle_features(name, h, indices=None, return_indices=False, reverse=False)
         rng = np.random.RandomState(
             (abs(hash(tf.get_variable_scope().name))) % 10000000)
 
-        if indices == None:
+        if indices is None:
             # Create numpy and tensorflow variables with indices
             n_channels = int(h.get_shape()[-1])
             indices = list(range(n_channels))
@@ -449,7 +454,8 @@ def gaussian_diag(mean, logsd):
     o.sample = mean + tf.exp(logsd) * o.eps
     o.sample2 = lambda eps: mean + tf.exp(logsd) * eps
     o.logps = lambda x: -0.5 * \
-        (np.log(2 * np.pi) + 2. * logsd + (x - mean) ** 2 / (tf.exp(2. * logsd) + 1e-10))
+        (np.log(2 * np.pi) + 2. * logsd + (x - mean)
+         ** 2 / (tf.exp(2. * logsd) + 1e-10))
     o.logp = lambda x: flatten_sum(o.logps(x))
     o.get_eps = lambda x: (x - mean) / (tf.exp(logsd) + 1e-10)
     return o

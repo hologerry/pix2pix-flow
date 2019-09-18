@@ -26,8 +26,10 @@ python2.7 data.py export [IMAGE_DB_PATH] --out_dir [LSUN_FOLDER] --flat
 
 # Get tfr file from images
 Use this script to generate the tfr file.
-python lsun.py --res [RES] --category [CATEGORY] --lsun_dir [LSUN_FOLDER] --tfrecord_dir [OUTPUT_FOLDER] --write [--realnvp]
-Without realnvp flag you get 256x256 centre cropped area downsampled images, with flag you get 96x96 images with realnvp preprocessing.
+python lsun.py --res [RES] --category [CATEGORY] --lsun_dir [LSUN_FOLDER]
+    --tfrecord_dir [OUTPUT_FOLDER] --write [--realnvp]
+Without realnvp flag you get 256x256 centre cropped area downsampled images,
+with flag you get 96x96 images with realnvp preprocessing.
 """
 
 from __future__ import print_function
@@ -149,7 +151,8 @@ if __name__ == "__main__":
     hps = parser.parse_args()
 
     # LSUN
-    # CATEGORIES = ["bedroom", "bridge", "church_outdoor", "classroom", "conference_room", "dining_room", "kitchen", "living"]
+    # CATEGORIES = ["bedroom", "bridge", "church_outdoor", "classroom", "conference_room",
+    #               "dining_room", "kitchen", "living"]
     base_tfr = hps.tfrecord_dir
     res = hps.res
     for realnvp in [False, True]:

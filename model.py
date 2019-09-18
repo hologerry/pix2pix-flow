@@ -8,7 +8,8 @@ from tensorflow.contrib.framework.python.ops import add_arg_scope
 
 
 '''
-f_loss: function with as input the (x,y,reuse=False), and as output a list/tuple whose first element is the loss.
+f_loss: function with as input the (x, y, reuse=False),
+and as output a list/tuple whose first element is the loss.
 '''
 
 
@@ -23,9 +24,11 @@ def abstract_model_xy(sess, hps, feeds, train_iterators, test_iterators, data_in
 
     # === Loss and optimizer
     if hps.joint_train:
-        loss_train_A, stats_train_A, eps_flatten_A, loss_train_B, stats_train_B, eps_flatten_B = f_loss(train_iterators, is_training=True)
+        (loss_train_A, stats_train_A, eps_flatten_A, loss_train_B, stats_train_B, eps_flatten_B) \
+            = f_loss(train_iterators, is_training=True)
     else:
-        loss_train_A, stats_train_A, loss_train_B, stats_train_B = f_loss(train_iterators, is_training=True)
+        (loss_train_A, stats_train_A, loss_train_B, stats_train_B) \
+            = f_loss(train_iterators, is_training=True)
 
     all_params = tf.trainable_variables()
 
@@ -48,7 +51,8 @@ def abstract_model_xy(sess, hps, feeds, train_iterators, test_iterators, data_in
         train_op_A, polyak_swap_op_A, ema_A = m.optimizer_A.adamax(
             params_A, gs_A, alpha=lr, hps=hps)
         if hps.direct_iterator:
-            m.train_A = lambda _lr: sess.run([train_op_A, stats_train_A], {lr: _lr})[1]
+            m.train_A = lambda _lr: sess.run(
+                [train_op_A, stats_train_A], {lr: _lr})[1]
         else:
             def _train_A(_lr, _x_A, _y_A, _x_B, _y_B):
                 return sess.run([train_op_A, stats_train_A], {feeds['x_A']: _x_A,
@@ -70,7 +74,8 @@ def abstract_model_xy(sess, hps, feeds, train_iterators, test_iterators, data_in
         train_op_B, polyak_swap_op_B, ema_B = m.optimizer_B.adamax(
             params_B, gs_B, alpha=lr, hps=hps)
         if hps.direct_iterator:
-            m.train_B = lambda _lr: sess.run([train_op_B, stats_train_B], {lr: _lr})[1]
+            m.train_B = lambda _lr: sess.run(
+                [train_op_B, stats_train_B], {lr: _lr})[1]
         else:
             def _train_B(_lr, _x_A, _y_A, _x_B, _y_B):
                 return sess.run([train_op_B, stats_train_B], {feeds['x_A']: _x_A,
@@ -89,7 +94,8 @@ def abstract_model_xy(sess, hps, feeds, train_iterators, test_iterators, data_in
     m.train = _train
 
     # === Testing
-    loss_test_A, stats_test_A, loss_test_B, stats_test_B = f_loss(test_iterators, False, reuse=True)
+    loss_test_A, stats_test_A, loss_test_B, stats_test_B = f_loss(
+        test_iterators, False, reuse=True)
     if hps.direct_iterator:
         m.test_A = lambda: sess.run(stats_test_A)
         m.test_B = lambda: sess.run(stats_test_B)
@@ -106,6 +112,7 @@ def abstract_model_xy(sess, hps, feeds, train_iterators, test_iterators, data_in
                                            feeds['y_A']: _y_A,
                                            feeds['x_B']: _x_B,
                                            feeds['y_B']: _y_B})
+
         def _test_B(_x_A, _y_A, _x_B, _y_B):
             return sess.run(stats_test_B, {feeds['x_A']: _x_A,
                                            feeds['y_A']: _y_A,
@@ -120,7 +127,8 @@ def abstract_model_xy(sess, hps, feeds, train_iterators, test_iterators, data_in
         saver_ema_A = tf.train.Saver(ema_A.variables_to_restore())
         m.save_ema_A = lambda path_A: saver_ema_A.save(
             sess, path_A, write_meta_graph=False)
-        m.save_A = lambda path_A: saver_A.save(sess, path_A, write_meta_graph=False)
+        m.save_A = lambda path_A: saver_A.save(
+            sess, path_A, write_meta_graph=False)
         m.restore_A = lambda path_A: saver_A.restore(sess, path_A)
 
     with tf.variable_scope('saver_B'):
@@ -128,7 +136,8 @@ def abstract_model_xy(sess, hps, feeds, train_iterators, test_iterators, data_in
         saver_ema_B = tf.train.Saver(ema_B.variables_to_restore())
         m.save_ema_B = lambda path_B: saver_ema_B.save(
             sess, path_B, write_meta_graph=False)
-        m.save_B = lambda path_B: saver_B.save(sess, path_B, write_meta_graph=False)
+        m.save_B = lambda path_B: saver_B.save(
+            sess, path_B, write_meta_graph=False)
         m.restore_B = lambda path_B: saver_B.restore(sess, path_B)
         print("After saver")
 
@@ -163,14 +172,16 @@ def codec(hps):
         for i in range(hps.n_levels):
             z, objective = revnet2d(str(i), z, objective, hps)
             if i < hps.n_levels-1:
-                z, objective, _eps = split2d("pool"+str(i), z, objective=objective)
+                z, objective, _eps = split2d(
+                    "pool"+str(i), z, objective=objective)
                 eps.append(_eps)
         return z, objective, eps
 
     def decoder(z, eps=[None]*hps.n_levels, eps_std=None):
         for i in reversed(range(hps.n_levels)):
             if i < hps.n_levels-1:
-                z = split2d_reverse("pool"+str(i), z, eps=eps[i], eps_std=eps_std)
+                z = split2d_reverse(
+                    "pool"+str(i), z, eps=eps[i], eps_std=eps_std)
             z, _ = revnet2d(str(i), z, 0, hps, reverse=True)
 
         return z
@@ -270,7 +281,8 @@ def model(sess, hps, train_iterators, test_iterators, data_inits):
             eps_A.append(z_A)
 
             # Loss of eps and flatten latent code from another model
-            eps_flatten_A = tf.concat([tf.contrib.layers.flatten(e) for e in eps_A], axis=-1)
+            eps_flatten_A = tf.concat(
+                [tf.contrib.layers.flatten(e) for e in eps_A], axis=-1)
 
         with tf.variable_scope('model_B', reuse=reuse):
             y_onehot_B = tf.cast(tf.one_hot(y_B, hps.n_y, 1, 0), 'float32')
@@ -295,7 +307,8 @@ def model(sess, hps, train_iterators, test_iterators, data_inits):
             eps_B.append(z_B)
 
             # Loss of eps and flatten latent code from another model
-            eps_flatten_B = tf.concat([tf.contrib.layers.flatten(e) for e in eps_B], axis=-1)
+            eps_flatten_B = tf.concat(
+                [tf.contrib.layers.flatten(e) for e in eps_B], axis=-1)
 
         code_loss = 0.0
         code_shapes = [[16, 16, 6], [8, 8, 12], [4, 4, 48]]
@@ -320,7 +333,8 @@ def model(sess, hps, train_iterators, test_iterators, data_inits):
                 with tf.variable_scope('model_B', reuse=True):
                     _, sample, _ = prior("prior", y_onehot_B, hps)
                     code_last_others = sample(eps=code_others[-1])
-                    code_decoded_others = decoder_B(code_last_others, code_others[:-1])
+                    code_decoded_others = decoder_B(
+                        code_last_others, code_others[:-1])
                 code_decoded = Z.unsqueeze2d(code_decoded_others, 2)
                 x_B_recon = postprocess(code_decoded)
                 x_B_scaled = 1/255.0 * tf.cast(x_B, tf.float32)
@@ -338,7 +352,8 @@ def model(sess, hps, train_iterators, test_iterators, data_inits):
                 tf.squared_difference(eps_flatten_A, eps_flatten_B))
         elif hps.code_loss_type == 'code_last':
             dim = np.prod(code_shapes[-1])
-            code_loss = tf.reduce_mean(tf.squared_difference(eps_flatten_A[:, -dim:], eps_flatten_B[:, -dim:]))
+            code_loss = tf.reduce_mean(tf.squared_difference(
+                eps_flatten_A[:, -dim:], eps_flatten_B[:, -dim:]))
         else:
             raise NotImplementedError()
 
@@ -358,7 +373,8 @@ def model(sess, hps, train_iterators, test_iterators, data_inits):
             bits_y_B = tf.zeros_like(bits_x_B)
             classification_error_B = tf.ones_like(bits_x_B)
 
-        return bits_x_A, bits_y_A, classification_error_A, eps_flatten_A, bits_x_B, bits_y_B, classification_error_B, eps_flatten_B, code_loss
+        return (bits_x_A, bits_y_A, classification_error_A, eps_flatten_A,
+                bits_x_B, bits_y_B, classification_error_B, eps_flatten_B, code_loss)
 
     def f_loss(iterators, is_training, reuse=False, init=False):
         if hps.direct_iterator and iterators is not None:
@@ -366,7 +382,9 @@ def model(sess, hps, train_iterators, test_iterators, data_inits):
         else:
             x_A, y_A, x_B, y_B = X_A, Y_A, X_B, Y_B
 
-        bits_x_A, bits_y_A, pred_loss_A, eps_flatten_A, bits_x_B, bits_y_B, pred_loss_B, eps_flatten_B, code_loss = _f_loss(x_A, y_A, x_B, y_B, is_training, reuse, init)
+        (bits_x_A, bits_y_A, pred_loss_A, eps_flatten_A,
+         bits_x_B, bits_y_B, pred_loss_B, eps_flatten_B, code_loss) = _f_loss(
+            x_A, y_A, x_B, y_B, is_training, reuse, init)
         local_loss_A = hps.mle_loss_scale * bits_x_A + hps.weight_y * bits_y_A
         local_loss_B = hps.mle_loss_scale * bits_x_B + hps.weight_y * bits_y_B
         # Add code difference loss
@@ -382,9 +400,11 @@ def model(sess, hps, train_iterators, test_iterators, data_inits):
             tf.stack([tf.reduce_mean(i) for i in stats_B]))
 
         if hps.joint_train and is_training:
-            return tf.reduce_mean(local_loss_A), global_stats_A, eps_flatten_A, tf.reduce_mean(local_loss_B), global_stats_B, eps_flatten_B
+            return (tf.reduce_mean(local_loss_A), global_stats_A, eps_flatten_A,
+                    tf.reduce_mean(local_loss_B), global_stats_B, eps_flatten_B)
         else:
-            return tf.reduce_mean(local_loss_A), global_stats_A, tf.reduce_mean(local_loss_B), global_stats_B
+            return (tf.reduce_mean(local_loss_A), global_stats_A,
+                    tf.reduce_mean(local_loss_B), global_stats_B)
 
     feeds = {'x_A': X_A, 'y_A': Y_A, 'x_B': X_B, 'y_B': Y_B}
     m = abstract_model_xy(sess, hps, feeds, train_iterators,
@@ -416,6 +436,7 @@ def model(sess, hps, train_iterators, test_iterators, data_inits):
 
     def sample_A(_y, _eps_std):
         return m.sess.run(x_A_sampled, {Y_A: _y, m.eps_std: _eps_std})
+
     def sample_B(_y, _eps_std):
         return m.sess.run(x_B_sampled, {Y_B: _y, m.eps_std: _eps_std})
     m.sample_A = sample_A
@@ -461,11 +482,13 @@ def model(sess, hps, train_iterators, test_iterators, data_inits):
 
             return x
 
-        enc_eps_A, enc_eps_B = f_encode(X_A, Y_A, 'model_A'), f_encode(X_B, Y_B, 'model_B')
+        enc_eps_A, enc_eps_B = f_encode(
+            X_A, Y_A, 'model_A'), f_encode(X_B, Y_B, 'model_B')
         dec_eps_A, dec_eps_B = [], []
         for enc_eps, dec_eps in zip([enc_eps_A, enc_eps_B], [dec_eps_A, dec_eps_B]):
             for i, _eps in enumerate(enc_eps):
-                dec_eps.append(tf.placeholder(tf.float32, _eps.get_shape().as_list(), name="dec_eps_" + str(i)))
+                dec_eps.append(tf.placeholder(
+                    tf.float32, _eps.get_shape().as_list(), name="dec_eps_" + str(i)))
         dec_x_A = f_decode(Y_A, dec_eps_A, 'model_A')
         dec_x_B = f_decode(Y_B, dec_eps_B, 'model_B')
 
@@ -480,7 +503,8 @@ def model(sess, hps, train_iterators, test_iterators, data_inits):
             eps = []
             bs = feps.shape[0]
             for shape in eps_shapes:
-                eps.append(np.reshape(feps[:, index: index+np.prod(shape)], (bs, *shape)))
+                eps.append(np.reshape(
+                    feps[:, index: index+np.prod(shape)], (bs, *shape)))
                 index += np.prod(shape)
             return eps
 
@@ -687,7 +711,7 @@ def invertible_1x1_conv(name, z, logdet, reverse=False):
             np_u = np.triu(np_u, k=1)
 
             p = tf.get_variable("P", initializer=np_p, trainable=False)
-            l = tf.get_variable("L", initializer=np_l)
+            l = tf.get_variable("L", initializer=np_l) # noqa
             sign_s = tf.get_variable(
                 "sign_S", initializer=np_sign_s, trainable=False)
             log_s = tf.get_variable("log_S", initializer=np_log_s)
@@ -695,7 +719,7 @@ def invertible_1x1_conv(name, z, logdet, reverse=False):
             u = tf.get_variable("U", initializer=np_u)
 
             p = tf.cast(p, dtype)
-            l = tf.cast(l, dtype)
+            l = tf.cast(l, dtype)  # noqa
             sign_s = tf.cast(sign_s, dtype)
             log_s = tf.cast(log_s, dtype)
             u = tf.cast(u, dtype)
@@ -703,7 +727,7 @@ def invertible_1x1_conv(name, z, logdet, reverse=False):
             w_shape = [shape[3], shape[3]]
 
             l_mask = np.tril(np.ones(w_shape, dtype=dtype), -1)
-            l = l * l_mask + tf.eye(*w_shape, dtype=dtype)
+            l = l * l_mask + tf.eye(*w_shape, dtype=dtype)  # noqa
             u = u * np.transpose(l_mask) + tf.diag(sign_s * tf.exp(log_s))
             w = tf.matmul(p, tf.matmul(l, u))
 

@@ -30,13 +30,15 @@ def shard(data, shards, rank):
     return x[ind:ind+size], y[ind:ind+size]
 
 
-def get_data(problem, shards, rank, data_augmentation_level, n_batch_train, n_batch_test, n_batch_init, resolution, flip_color=False, code_path=None):
+def get_data(problem, shards, rank, data_augmentation_level,
+             n_batch_train, n_batch_test, n_batch_init,
+             resolution, flip_color=False, code_path=None):
     if problem == 'mnist':
         from keras.datasets import mnist
         (x_train, y_train), (x_test, y_test) = mnist.load_data()
         y_train = np.reshape(y_train, [-1])
         y_test = np.reshape(y_test, [-1])
-        if code_path != None:
+        if code_path is not None:
             z = np.load(code_path).item()
             z_train = z['train']
             z_test = z['test']
@@ -73,7 +75,8 @@ def get_data(problem, shards, rank, data_augmentation_level, n_batch_train, n_ba
     x_train_Y, y_train_Y = shard((x_train_Y, y_train_Y), shards, rank)
     x_test_Y, y_test_Y = shard((x_test_Y, y_test_Y), shards, rank)
 
-    print('n_shard_train:', x_train_X.shape[0], 'n_shard_test:', x_test_X.shape[0])
+    print('n_shard_train:', x_train_X.shape[0],
+          'n_shard_test:', x_test_X.shape[0])
 
     from keras.preprocessing.image import ImageDataGenerator
     datagen_test = ImageDataGenerator()
@@ -108,13 +111,17 @@ def get_data(problem, shards, rank, data_augmentation_level, n_batch_train, n_ba
     seed = 420
     datagen_train.fit(x_train_X, seed=seed)
     datagen_test.fit(x_test_X, seed=seed)
-    train_flow_X = datagen_train.flow(x_train_X, y_train_X, n_batch_train, seed=seed)
-    test_flow_X = datagen_test.flow(x_test_X, y_test_X, n_batch_test, shuffle=False, seed=seed)
+    train_flow_X = datagen_train.flow(
+        x_train_X, y_train_X, n_batch_train, seed=seed)
+    test_flow_X = datagen_test.flow(
+        x_test_X, y_test_X, n_batch_test, shuffle=False, seed=seed)
 
     datagen_train.fit(x_train_Y, seed=seed)
     datagen_test.fit(x_test_Y, seed=seed)
-    train_flow_Y = datagen_train.flow(x_train_Y, y_train_Y, n_batch_train, seed=seed)
-    test_flow_Y = datagen_test.flow(x_test_Y, y_test_Y, n_batch_test, shuffle=False, seed=seed)
+    train_flow_Y = datagen_train.flow(
+        x_train_Y, y_train_Y, n_batch_train, seed=seed)
+    test_flow_Y = datagen_test.flow(
+        x_test_Y, y_test_Y, n_batch_test, shuffle=False, seed=seed)
 
     def make_iterator(flow, resolution, code_path=None):
         def iterator():
@@ -122,7 +129,7 @@ def get_data(problem, shards, rank, data_augmentation_level, n_batch_train, n_ba
             x_full = x_full.astype(np.float32)
             x = downsample(x_full, resolution)
             x = x_to_uint8(x)
-            if code_path != None:
+            if code_path is not None:
                 y = np.squeeze(yz[:, :1])
                 z = yz[:, 1:]
                 return x, y, z
@@ -132,7 +139,7 @@ def get_data(problem, shards, rank, data_augmentation_level, n_batch_train, n_ba
 
         return iterator
 
-    #init_iterator = make_iterator(train_flow, resolution)
+    # init_iterator = make_iterator(train_flow, resolution)
     train_iterator_X = make_iterator(train_flow_X, resolution, code_path)
     test_iterator_X = make_iterator(test_flow_X, resolution, code_path)
 
@@ -140,19 +147,21 @@ def get_data(problem, shards, rank, data_augmentation_level, n_batch_train, n_ba
     test_iterator_Y = make_iterator(test_flow_Y, resolution, code_path)
 
     # Get data for initialization
-    data_init_X = make_batch(train_iterator_X, n_batch_train, n_batch_init, code_path=code_path)
-    data_init_Y = make_batch(train_iterator_Y, n_batch_train, n_batch_init, code_path=code_path)
+    data_init_X = make_batch(
+        train_iterator_X, n_batch_train, n_batch_init, code_path=code_path)
+    data_init_Y = make_batch(
+        train_iterator_Y, n_batch_train, n_batch_init, code_path=code_path)
 
     return train_iterator_X, test_iterator_X, data_init_X, train_iterator_Y, test_iterator_Y, data_init_Y
 
 
 def make_batch(iterator, iterator_batch_size, required_batch_size, code_path=None):
     ib, rb = iterator_batch_size, required_batch_size
-    #assert rb % ib == 0
+    # assert rb % ib == 0
     k = int(np.ceil(rb / ib))
     xs, ys, codes = [], [], []
     for i in range(k):
-        if code_path != None:
+        if code_path is not None:
             x, y, code = iterator()
             codes.append(code)
         else:
@@ -160,7 +169,7 @@ def make_batch(iterator, iterator_batch_size, required_batch_size, code_path=Non
         xs.append(x)
         ys.append(y)
     x, y = np.concatenate(xs)[:rb], np.concatenate(ys)[:rb]
-    if code_path != None:
+    if code_path is not None:
         code = np.concatenate(codes)[:rb]
         return {'x': x, 'y': y, 'code': code}
     else:
