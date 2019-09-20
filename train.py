@@ -6,7 +6,7 @@ import os
 import sys
 import time
 
-import horovod.tensorflow as hvd
+import horovod.tensorflow as hvd  # noqa
 import numpy as np
 import tensorflow as tf
 import graphics
@@ -157,8 +157,8 @@ def main(hps):
     np.random.seed(hvd.rank() + hvd.size() * hps.seed)
 
     # Get data and set train_its and valid_its
-    train_iterator_A, test_iterator_A, data_init_A, train_iterator_B, test_iterator_B, data_init_B = get_data(
-        hps, sess)
+    (train_iterator_A, test_iterator_A, data_init_A,
+     train_iterator_B, test_iterator_B, data_init_B) = get_data(hps, sess)
     hps.train_its, hps.test_its, hps.full_test_its = get_its(hps)
 
     # Create log dir
@@ -169,19 +169,16 @@ def main(hps):
     # Set up restore path
     if hps.inference:
         if hps.restore_path_A == '':
-            hps.restore_path_A = os.path.join(
-                hps.logdir, 'model_A_best_loss.ckpt')
+            hps.restore_path_A = os.path.join(hps.logdir, 'model_A_best_loss.ckpt')
         if hps.restore_path_B == '':
-            hps.restore_path_B = os.path.join(
-                hps.logdir, 'model_B_best_loss.ckpt')
+            hps.restore_path_B = os.path.join(hps.logdir, 'model_B_best_loss.ckpt')
 
     # Create model
     import model
     train_iterators = {'A': train_iterator_A, 'B': train_iterator_B}
     test_iterators = {'A': test_iterator_A, 'B': test_iterator_B}
     data_inits = {'A': data_init_A, 'B': data_init_B}
-    model = model.model(sess, hps,
-                        train_iterators, test_iterators, data_inits)
+    model = model.model(sess, hps, train_iterators, test_iterators, data_inits)
     # Initialize visualization functions
     visualise = init_visualizations(hps, logdir, model)
     if not hps.inference:
